@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>7x7 Grid Cell Selector</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 28px;
+        }
+
+        .stats {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 8px;
+            margin-bottom: 30px;
+            aspect-ratio: 1;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            background: #f0f0f0;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #999;
+            transition: all 0.3s ease;
+            cursor: default;
+        }
+
+        .cell.used {
+            background: #667eea;
+            border-color: #667eea;
+            color: white;
+            transform: scale(0.95);
+        }
+
+        .cell.current {
+            background: #ffd700;
+            border-color: #ffa500;
+            color: #333;
+            animation: pulse 0.6s ease;
+            transform: scale(1.1);
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1.1);
+            }
+            50% {
+                transform: scale(1.2);
+            }
+        }
+
+        .controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            font-weight: 600;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            color: white;
+        }
+
+        .btn-select {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            flex: 1;
+        }
+
+        .btn-select:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-reset {
+            background: #ff6b6b;
+        }
+
+        .btn-reset:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .message {
+            text-align: center;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 600;
+            display: none;
+        }
+
+        .message.show {
+            display: block;
+        }
+
+        .message.complete {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>7×7 Grid Selector</h1>
+        <div class="stats">
+            <span id="usedCount">0</span> / 49 cells used
+        </div>
+        
+        <div class="grid" id="grid"></div>
+        
+        <div class="controls">
+            <button class="btn-select" id="selectBtn">Select Random Cell</button>
+            <button class="btn-reset" id="resetBtn">Reset</button>
+        </div>
+        
+        <div class="message" id="message"></div>
+    </div>
+
+    <script>
+        // Game state stored in memory
+        const gridSize = 7;
+        const totalCells = gridSize * gridSize;
+        let usedCells = new Set();
+        let currentCell = null;
+
+        // DOM elements
+        const gridEl = document.getElementById('grid');
+        const selectBtn = document.getElementById('selectBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const usedCountEl = document.getElementById('usedCount');
+        const messageEl = document.getElementById('message');
+
+        // Initialize grid
+        function initGrid() {
+            gridEl.innerHTML = '';
+            for (let i = 0; i < totalCells; i++) {
+                const cell = document.createElement('div');
+                cell.className = 'cell';
+                cell.dataset.index = i;
+                gridEl.appendChild(cell);
+            }
+        }
+
+        // Update display
+        function updateDisplay() {
+            const cells = gridEl.querySelectorAll('.cell');
+            
+            cells.forEach((cell, index) => {
+                cell.className = 'cell';
+                
+                if (usedCells.has(index)) {
+                    cell.classList.add('used');
+                }
+                
+                if (index === currentCell) {
+                    cell.classList.add('current');
+                }
+            });
+            
+            usedCountEl.textContent = usedCells.size;
+            
+            // Update button state
+            if (usedCells.size === totalCells) {
+                selectBtn.disabled = true;
+                showMessage('All cells have been used! Click Reset to start over.', 'complete');
+            } else {
+                selectBtn.disabled = false;
+            }
+        }
+
+        // Select random unused cell
+        function selectRandomCell() {
+            const availableCells = [];
+            
+            for (let i = 0; i < totalCells; i++) {
+                if (!usedCells.has(i)) {
+                    availableCells.push(i);
+                }
+            }
+            
+            if (availableCells.length === 0) {
+                return null;
+            }
+            
+            const randomIndex = Math.floor(Math.random() * availableCells.length);
+            const selectedCell = availableCells[randomIndex];
+            
+            usedCells.add(selectedCell);
+            currentCell = selectedCell;
+            
+            return selectedCell;
+        }
+
+        // Show message
+        function showMessage(text, type) {
+            messageEl.textContent = text;
+            messageEl.className = `message show ${type}`;
+        }
+
+        // Reset game
+        function reset() {
+            usedCells.clear();
+            currentCell = null;
+            messageEl.className = 'message';
+            updateDisplay();
+        }
+
+        // Event listeners
+        selectBtn.addEventListener('click', () => {
+            const selected = selectRandomCell();
+            if (selected !== null) {
+                updateDisplay();
+            }
+        });
+
+        resetBtn.addEventListener('click', reset);
+
+        // Initialize
+        initGrid();
+        updateDisplay();
+    </script>
+</body>
+</html>
