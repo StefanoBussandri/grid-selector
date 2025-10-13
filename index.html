@@ -17,7 +17,7 @@
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #042d68 0%, #063a85 50%, #0a4da3 100%);
             padding: 20px;
         }
 
@@ -25,23 +25,25 @@
             background: white;
             padding: 40px;
             border-radius: 20px;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            box-shadow: 0 20px 60px rgba(4, 45, 104, 0.4);
             max-width: 600px;
             width: 100%;
         }
 
         h1 {
             text-align: center;
-            color: #333;
+            color: #042d68;
             margin-bottom: 10px;
             font-size: 28px;
+            font-weight: 700;
         }
 
         .stats {
             text-align: center;
-            color: #666;
+            color: #0a4da3;
             margin-bottom: 30px;
             font-size: 16px;
+            font-weight: 500;
         }
 
         .grid {
@@ -54,31 +56,34 @@
 
         .cell {
             aspect-ratio: 1;
-            background: #f0f0f0;
-            border: 2px solid #ddd;
-            border-radius: 8px;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            border: 2px solid #dee2e6;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-weight: bold;
-            color: #999;
+            font-weight: 700;
+            font-size: 20px;
+            color: transparent;
             transition: all 0.3s ease;
             cursor: default;
+            position: relative;
         }
 
         .cell.used {
-            background: #667eea;
-            border-color: #667eea;
+            background: linear-gradient(135deg, #063a85 0%, #042d68 100%);
+            border-color: #042d68;
             color: white;
             transform: scale(0.95);
         }
 
         .cell.current {
-            background: #ffd700;
+            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
             border-color: #ffa500;
-            color: #333;
+            color: #042d68;
             animation: pulse 0.6s ease;
             transform: scale(1.1);
+            box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
         }
 
         @keyframes pulse {
@@ -108,28 +113,31 @@
         }
 
         .btn-select {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #063a85 0%, #042d68 100%);
             flex: 1;
+            box-shadow: 0 4px 15px rgba(4, 45, 104, 0.3);
         }
 
         .btn-select:hover:not(:disabled) {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(4, 45, 104, 0.4);
         }
 
         .btn-reset {
-            background: #ff6b6b;
+            background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.3);
         }
 
         .btn-reset:hover {
             transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.4);
+            box-shadow: 0 6px 20px rgba(220, 53, 69, 0.4);
         }
 
         button:disabled {
-            background: #ccc;
+            background: #adb5bd;
             cursor: not-allowed;
             transform: none;
+            box-shadow: none;
         }
 
         .message {
@@ -148,7 +156,22 @@
         .message.complete {
             background: #d4edda;
             color: #155724;
-            border: 1px solid #c3e6cb;
+            border: 2px solid #c3e6cb;
+        }
+
+        .info-banner {
+            text-align: center;
+            margin-top: 20px;
+            padding: 12px;
+            background: linear-gradient(135deg, #e7f1ff 0%, #d0e7ff 100%);
+            border-radius: 8px;
+            color: #042d68;
+            font-size: 14px;
+            border: 1px solid #b8daff;
+        }
+
+        .info-banner strong {
+            color: #063a85;
         }
     </style>
 </head>
@@ -167,13 +190,41 @@
         </div>
         
         <div class="message" id="message"></div>
+        
+        <div class="info-banner">
+            <strong>💾 Auto-saved:</strong> Your selections are automatically saved and will persist even after refreshing the page
+        </div>
     </div>
 
     <script>
-        // Game state stored in memory
+        // Cookie management functions
+        function setCookie(name, value, days) {
+            const date = new Date();
+            date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+            const expires = "expires=" + date.toUTCString();
+            document.cookie = name + "=" + value + ";" + expires + ";path=/";
+        }
+
+        function getCookie(name) {
+            const nameEQ = name + "=";
+            const ca = document.cookie.split(';');
+            for (let i = 0; i < ca.length; i++) {
+                let c = ca[i];
+                while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+                if (c.indexOf(nameEQ) === 0) return c.substring(nameEQ.length, c.length);
+            }
+            return null;
+        }
+
+        function deleteCookie(name) {
+            document.cookie = name + "=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;";
+        }
+
+        // Game state
         const gridSize = 7;
         const totalCells = gridSize * gridSize;
-        let usedCells = new Set();
+        let cellSelections = {}; // Maps cell index to selection order number
+        let selectionCounter = 0;
         let currentCell = null;
 
         // DOM elements
@@ -182,6 +233,34 @@
         const resetBtn = document.getElementById('resetBtn');
         const usedCountEl = document.getElementById('usedCount');
         const messageEl = document.getElementById('message');
+
+        // Load saved state from cookie
+        function loadState() {
+            const savedState = getCookie('gridState');
+            if (savedState) {
+                try {
+                    const state = JSON.parse(savedState);
+                    cellSelections = state.cellSelections || {};
+                    selectionCounter = state.selectionCounter || 0;
+                    currentCell = state.currentCell || null;
+                } catch (e) {
+                    console.error('Error loading saved state:', e);
+                    cellSelections = {};
+                    selectionCounter = 0;
+                    currentCell = null;
+                }
+            }
+        }
+
+        // Save state to cookie
+        function saveState() {
+            const state = {
+                cellSelections: cellSelections,
+                selectionCounter: selectionCounter,
+                currentCell: currentCell
+            };
+            setCookie('gridState', JSON.stringify(state), 365); // Save for 1 year
+        }
 
         // Initialize grid
         function initGrid() {
@@ -197,12 +276,15 @@
         // Update display
         function updateDisplay() {
             const cells = gridEl.querySelectorAll('.cell');
+            const usedCount = Object.keys(cellSelections).length;
             
             cells.forEach((cell, index) => {
                 cell.className = 'cell';
+                cell.textContent = '';
                 
-                if (usedCells.has(index)) {
+                if (cellSelections.hasOwnProperty(index)) {
                     cell.classList.add('used');
+                    cell.textContent = cellSelections[index];
                 }
                 
                 if (index === currentCell) {
@@ -210,10 +292,10 @@
                 }
             });
             
-            usedCountEl.textContent = usedCells.size;
+            usedCountEl.textContent = usedCount;
             
             // Update button state
-            if (usedCells.size === totalCells) {
+            if (usedCount === totalCells) {
                 selectBtn.disabled = true;
                 showMessage('All cells have been used! Click Reset to start over.', 'complete');
             } else {
@@ -226,7 +308,7 @@
             const availableCells = [];
             
             for (let i = 0; i < totalCells; i++) {
-                if (!usedCells.has(i)) {
+                if (!cellSelections.hasOwnProperty(i)) {
                     availableCells.push(i);
                 }
             }
@@ -238,8 +320,11 @@
             const randomIndex = Math.floor(Math.random() * availableCells.length);
             const selectedCell = availableCells[randomIndex];
             
-            usedCells.add(selectedCell);
+            selectionCounter++;
+            cellSelections[selectedCell] = selectionCounter;
             currentCell = selectedCell;
+            
+            saveState();
             
             return selectedCell;
         }
@@ -252,10 +337,14 @@
 
         // Reset game
         function reset() {
-            usedCells.clear();
-            currentCell = null;
-            messageEl.className = 'message';
-            updateDisplay();
+            if (confirm('Are you sure you want to reset? This will clear all selections.')) {
+                cellSelections = {};
+                selectionCounter = 0;
+                currentCell = null;
+                messageEl.className = 'message';
+                deleteCookie('gridState');
+                updateDisplay();
+            }
         }
 
         // Event listeners
@@ -269,6 +358,7 @@
         resetBtn.addEventListener('click', reset);
 
         // Initialize
+        loadState();
         initGrid();
         updateDisplay();
     </script>
