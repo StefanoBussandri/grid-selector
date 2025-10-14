@@ -203,7 +203,8 @@
         <div class="message" id="message"></div>
         
         <div class="info-banner">
-            <strong>💾 Auto-saved:</strong> Your selections are automatically saved and will persist even after refreshing the page
+            <strong>💾 Auto-saved:</strong> Your selections are automatically saved and will persist even after refreshing the page<br>
+            <strong>🖱️ Click any cell</strong> to manually add or remove it from your selections
         </div>
     </div>
 
@@ -282,6 +283,14 @@
                 cell.dataset.index = i;
                 gridEl.appendChild(cell);
             }
+            
+            // Add click handler to the grid container using event delegation
+            gridEl.addEventListener('click', (e) => {
+                if (e.target.classList.contains('cell')) {
+                    const index = parseInt(e.target.dataset.index);
+                    toggleCell(index);
+                }
+            });
         }
 
         // Update display
@@ -338,6 +347,38 @@
             saveState();
             
             return selectedCell;
+        }
+
+        // Toggle cell manually
+        function toggleCell(index) {
+            if (cellSelections.hasOwnProperty(index)) {
+                // Remove the cell
+                const removedNumber = cellSelections[index];
+                delete cellSelections[index];
+                
+                // Renumber all cells with numbers higher than the removed one
+                for (let cellIndex in cellSelections) {
+                    if (cellSelections[cellIndex] > removedNumber) {
+                        cellSelections[cellIndex]--;
+                    }
+                }
+                
+                // Decrease counter
+                selectionCounter--;
+                
+                // Clear current cell if it was this one
+                if (currentCell === index) {
+                    currentCell = null;
+                }
+            } else {
+                // Add the cell
+                selectionCounter++;
+                cellSelections[index] = selectionCounter;
+                currentCell = index;
+            }
+            
+            saveState();
+            updateDisplay();
         }
 
         // Show message
