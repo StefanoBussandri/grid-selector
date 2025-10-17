@@ -56,44 +56,66 @@
 
         .cell {
             aspect-ratio: 1;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: 2px solid #dee2e6;
-            border-radius: 10px;
+            border-radius: 5px;
             display: flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
             font-size: 20px;
-            color: transparent;
+            color: white;
             transition: all 0.3s ease;
             cursor: pointer;
             position: relative;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            overflow: hidden;
+        }
+
+        .cell::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.8);
+            transition: all 0.3s ease;
+            z-index: 1;
+        }
+
+        .cell span {
+            position: relative;
+            z-index: 2;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+        }
+
+        .cell:hover:not(.used)::before {
+            background: rgba(0, 0, 0, 0.85);
         }
 
         .cell:hover:not(.used) {
-            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-            border-color: #063a85;
             transform: scale(1.05);
         }
 
-        .cell.used:hover {
-            transform: scale(0.9);
-            opacity: 0.8;
+        .cell.used::before {
+            background: rgba(0, 0, 0, 0.1);
         }
 
         .cell.used {
-            background: linear-gradient(135deg, #063a85 0%, #042d68 100%);
-            border-color: #042d68;
-            color: white;
+            border-width: 4px;
+        }
+
+        .cell.used:hover {
             transform: scale(0.95);
         }
 
+        .cell.used:hover::before {
+            background: rgba(0, 0, 0, 0.05);
+        }
+
         .cell.current {
-            background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
-            border-color: #ffa500;
-            color: #042d68;
             animation: pulse 0.6s ease;
-            transform: scale(1.1);
             box-shadow: 0 4px 15px rgba(255, 215, 0, 0.5);
         }
 
@@ -299,12 +321,20 @@
             const usedCount = Object.keys(cellSelections).length;
             
             cells.forEach((cell, index) => {
+                // Calculate row and column (1-indexed for file names)
+                const row = Math.floor(index / gridSize) + 1;
+                const col = (index % gridSize) + 1;
+                const imagePath = `images/100px-Grid_Master_tile_(R${row}T${col}).png`;
+                
                 cell.className = 'cell';
-                cell.textContent = '';
+                cell.style.backgroundImage = `url('${imagePath}')`;
+                cell.innerHTML = '';
                 
                 if (cellSelections.hasOwnProperty(index)) {
                     cell.classList.add('used');
-                    cell.textContent = cellSelections[index];
+                    const numberSpan = document.createElement('span');
+                    numberSpan.textContent = cellSelections[index];
+                    cell.appendChild(numberSpan);
                 }
                 
                 if (index === currentCell) {
